@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     twilio_auth_token: str
     redis_url: str = "redis://localhost:6379/0"
     
+    # AGREGAR ESTAS NUEVAS LÍNEAS:
+    twilio_account_sid: str
+    twilio_whatsapp_from: str = "whatsapp:+14155238886"
+    
     class Config:
         env_file = ".env"
 
