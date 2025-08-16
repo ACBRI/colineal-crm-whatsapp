@@ -7,6 +7,8 @@ from typing import Optional
 
 from ..services.redis_service import redis_service
 from ..core.security import validate_twilio_signature
+from ..services.odoo_service import OdooService
+from ..config.settings import settings
 
 # --- NUEVO PROMPT MEJORADO ---
 SYSTEM_PROMPT = """Tu única función es analizar el texto de un usuario y devolver un único objeto JSON válido. No escribas absolutamente nada más que el objeto JSON. No incluyas explicaciones, saludos ni texto adicional. La salida debe ser exclusivamente el JSON.
@@ -26,12 +28,12 @@ JSON_OUTPUT: {"quality": "cold", "intent": "Reclamo por retraso en la entrega de
 
 Ahora, procesa el siguiente mensaje del usuario.
 """
+
 modelo_ia = genai.GenerativeModel('gemini-1.5-flash-latest')
 TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
 
 router = APIRouter()
 
-# El resto del archivo es exactamente el mismo de antes
 @router.post("/webhook/whatsapp")
 async def receive_webhook(request: Request, x_twilio_signature: Optional[str] = Header(None)):
     url = str(request.url)
@@ -62,8 +64,45 @@ async def receive_webhook(request: Request, x_twilio_signature: Optional[str] = 
 
         redis_service.mark_message_as_processed(wamid)
         
-        # En lugar de una respuesta vacía, ahora devolvemos el JSON para verlo en Postman
-        return {"status": "success", "analysis": json_response}
+        # NUEVO: Crear lead en Odoo automáticamente
+        try:
+            # Crear el servicio de Odoo
+            odoo_service = OdooService(
+                url=settings.odoo_url,
+                db=settings.odoo_db, 
+                username=settings.odoo_username,
+                password=settings.odoo_password
+            )
+            
+            # Obtener el número de teléfono
+            phone_number = data.get("From", "Sin número")
+            
+            # Crear el lead en Odoo
+            lead_id = odoo_service.create_lead_from_whatsapp(
+                phone_number=phone_number,
+                message=mensaje_cliente,
+                ai_analysis=json_response
+            )
+            
+            print(f"✅ Lead creado en Odoo con ID: {lead_id}")
+            
+            # Devolver respuesta exitosa
+            return {
+                "status": "success", 
+                "analysis": json_response, 
+                "lead_created": True,
+                "lead_id": lead_id
+            }
+            
+        except Exception as e:
+            print(f"⚠️ Error creando lead en Odoo: {e}")
+            # Si hay error con Odoo, devolver solo el análisis
+            return {
+                "status": "success", 
+                "analysis": json_response, 
+                "lead_created": False,
+                "error": str(e)
+            }
 
     except json.JSONDecodeError:
         raise HTTPException(status_code=500, detail="La respuesta de la IA no es un JSON válido.")
