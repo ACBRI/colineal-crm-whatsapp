@@ -1,4 +1,4 @@
-# src/services/ai_classifier.py
+# src/services/ai_classifier.py (VERSIÓN BÁSICA - SOLO CAMPOS GARANTIZADOS)
 import json
 import logging
 from typing import Dict, Any, Optional, List
@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 
 class AIClassifier:
     """
-    Clasificador inteligente que determina si hay información suficiente
-    para crear un lead de calidad o si necesita más datos del usuario.
+    Clasificador inteligente con conversación natural y lógica profesional.
+    Compatible con Odoo básico (sin campos personalizados).
     """
     
     def __init__(self):
@@ -21,185 +21,275 @@ class AIClassifier:
             "interest_level": ["product_interest", "specific_need"],  # Al menos uno
             "intent_clarity": ["clear_intent"]  # Debe estar presente
         }
+        
+        # Estrategias por calidad de lead
+        self.lead_strategies = {
+            "hot": {"min_confidence": 0.7, "should_create_lead": True},
+            "warm": {"min_confidence": 0.5, "should_create_lead": False},
+            "cold": {"min_confidence": 0.3, "should_create_lead": False}
+        }
     
     def analyze_message_completeness(self, user_message: str, conversation_history: List[Dict] = None) -> Dict[str, Any]:
         """
-        Analiza si el mensaje contiene información suficiente para crear un lead
-        o si necesita hacer preguntas de seguimiento.
+        Analiza el mensaje del usuario y genera respuesta conversacional natural
+        con lógica profesional de leads.
         """
         
-        prompt = self._build_completeness_prompt(user_message, conversation_history)
+        prompt = self._build_conversational_prompt(user_message, conversation_history)
         
         try:
             response = self.model.generate_content([prompt, user_message])
             cleaned_response = response.text.strip().replace('```json', '').replace('```', '')
             analysis = json.loads(cleaned_response)
             
-            # Agregar recomendación de acción
-            analysis["recommended_action"] = self._determine_action(analysis)
-            analysis["next_question"] = self._generate_next_question(analysis)
+            # AGREGAR COMPATIBILIDAD con webhook existente
+            analysis = self._ensure_compatibility(analysis)
+            
+            # AGREGAR LÓGICA PROFESIONAL
+            analysis = self._add_professional_logic(analysis)
             
             return analysis
             
         except Exception as e:
-            logger.error(f"Error en análisis de completitud: {e}")
+            logger.error(f"Error en análisis conversacional: {e}")
             return self._fallback_analysis()
     
-    def _build_completeness_prompt(self, user_message: str, conversation_history: List[Dict] = None) -> str:
-        """Construye el prompt para evaluar completitud de información."""
+    def _build_conversational_prompt(self, user_message: str, conversation_history: List[Dict] = None) -> str:
+        """Prompt optimizado para conversación natural."""
         
-        return """ERES UN CLASIFICADOR DE LEADS INTELIGENTE. Tu función es analizar si hay información SUFICIENTE para crear un lead de calidad en el CRM.
+        history_str = json.dumps(conversation_history[-5:], indent=2) if conversation_history else "[]"
 
-DEVUELVE ÚNICAMENTE UN JSON VÁLIDO con esta estructura:
-{
-    "has_sufficient_info": true/false,
-    "missing_info": ["campo1", "campo2"],
-    "extracted_data": {
-        "name": "string o null",
-        "phone": "string o null", 
-        "email": "string o null",
-        "product_interest": ["array de productos"],
-        "location": "string o null",
-        "budget_range": "string o null",
-        "urgency": "high/medium/low/null",
-        "intent": "string"
-    },
-    "confidence_score": 0.0-1.0,
-    "quality_assessment": "hot/warm/cold",
-    "is_support_request": true/false,
-    "conversation_stage": "initial/gathering_info/ready_for_lead/support"
-}
+        return f"""ERES UN ASISTENTE DE VENTAS CONVERSACIONAL EXPERTO para COLINEAL, una tienda de muebles y decoración.
 
-CRITERIOS PARA has_sufficient_info = true:
-✅ Tiene al menos UNA forma de contacto (nombre, teléfono confirmado, email)
-✅ Tiene interés específico en productos/servicios
-✅ Intención clara (compra, consulta, cotización)
-✅ NO es solo un saludo genérico
+REGLAS DE CONVERSACIÓN:
+✅ Responde DIRECTAMENTE las preguntas del usuario PRIMERO
+✅ Usa lenguaje claro y simple
+✅ Oraciones cortas e impactantes
+✅ Voz activa, nunca pasiva
+✅ Usa "tú" y "tu" para dirigirte al usuario
+✅ Sé natural, útil y profesional
 
-CRITERIOS PARA has_sufficient_info = false:
-❌ Solo saludo sin información específica ("Hola", "Buenos días")
-❌ Pregunta muy vaga ("¿Qué venden?")
-❌ Falta información de contacto básica
-❌ No hay interés específico identificado
+PALABRAS PROHIBIDAS (NUNCA usar):
+❌ puede, podría, solo, que, muy, realmente, literalmente, actualmente, ciertamente, probablemente, básicamente, tal vez, profundizar, embarcarse, estimado, crear, creando, imaginar, reino, revolucionario, desbloquear, descubrir, utilizar, utilizando, sumergirse, revelar, fundamental, elucidar, por lo tanto, además, sin embargo, aprovechar, emocionante, innovador, poderoso, consultas
+
+FORMATO PROHIBIDO:
+❌ NO uses guiones largos, punto y coma, hashtags, markdown, asteriscos
+❌ NO seas robótico ni repetitivo
+❌ NO ignores las preguntas del usuario
+
+PRODUCTOS COLINEAL:
+• Sofás y muebles para sala
+• Comedores y mesas  
+• Muebles para dormitorio
+• Decoración y textiles (manteles, cojines, cortinas)
+• Muebles de oficina
+• Accesorios decorativos
+
+LÓGICA DE CALIFICACIÓN:
+🔥 HOT: Tiene nombre + producto específico + presupuesto/urgencia
+🟡 WARM: Tiene algún dato útil + interés específico
+❄️ COLD: Solo saludo o pregunta general
+🆘 SOPORTE: Problemas, reclamos, post-venta
+
+ESTRUCTURA JSON (responder ÚNICAMENTE con esto):
+{{
+    "analysis": {{
+        "has_sufficient_info": true/false,
+        "missing_info": ["campo1", "campo2"],
+        "extracted_data": {{
+            "name": "string o null",
+            "phone": "string o null",
+            "email": "string o null",
+            "product_interest": ["array de productos"],
+            "location": "string o null",
+            "budget_range": "string o null",
+            "urgency": "high/medium/low/null",
+            "intent": "string"
+        }},
+        "confidence_score": 0.0-1.0,
+        "quality_assessment": "hot/warm/cold",
+        "is_support_request": true/false,
+        "conversation_stage": "initial/gathering_info/ready_for_lead/support"
+    }},
+    "suggested_reply": "Respuesta natural y directa que contesta la pregunta del usuario",
+    "recommended_action": "create_lead/continue_conversation/transfer_to_support"
+}}
 
 EJEMPLOS:
 
-MENSAJE: "Hola, buenos días"
-JSON: {"has_sufficient_info": false, "missing_info": ["contact_info", "product_interest", "specific_intent"], "extracted_data": {"name": null, "phone": null, "email": null, "product_interest": [], "location": null, "budget_range": null, "urgency": null, "intent": "saludo_inicial"}, "confidence_score": 0.2, "quality_assessment": "cold", "is_support_request": false, "conversation_stage": "initial"}
+USUARIO: "¿Qué venden?"
+RESPUESTA: {{
+    "analysis": {{
+        "has_sufficient_info": false,
+        "missing_info": ["contact_info", "specific_product"],
+        "extracted_data": {{"name": null, "phone": null, "email": null, "product_interest": [], "location": null, "budget_range": null, "urgency": null, "intent": "información_general"}},
+        "confidence_score": 0.3,
+        "quality_assessment": "cold",
+        "is_support_request": false,
+        "conversation_stage": "initial"
+    }},
+    "suggested_reply": "¡Hola! Somos COLINEAL, especialistas en muebles y decoración para tu hogar. Tenemos sofás, comedores, muebles de dormitorio y accesorios decorativos. ¿Hay algo específico que buscas para tu casa?",
+    "recommended_action": "continue_conversation"
+}}
 
-MENSAJE: "Hola, soy María. Quiero información sobre sofás modulares para mi sala. Mi presupuesto es de $2000"
-JSON: {"has_sufficient_info": true, "missing_info": [], "extracted_data": {"name": "María", "phone": null, "email": null, "product_interest": ["sofás modulares"], "location": null, "budget_range": "$2000", "urgency": "medium", "intent": "solicitud_informacion_producto"}, "confidence_score": 0.8, "quality_assessment": "hot", "is_support_request": false, "conversation_stage": "ready_for_lead"}
+USUARIO: "Soy María, busco un sofá de 3 puestos, tengo $2000"
+RESPUESTA: {{
+    "analysis": {{
+        "has_sufficient_info": true,
+        "missing_info": [],
+        "extracted_data": {{"name": "María", "phone": null, "email": null, "product_interest": ["sofá 3 puestos"], "location": null, "budget_range": "$2000", "urgency": "medium", "intent": "compra_sofá"}},
+        "confidence_score": 0.9,
+        "quality_assessment": "hot",
+        "is_support_request": false,
+        "conversation_stage": "ready_for_lead"
+    }},
+    "suggested_reply": "¡Perfecto, María! Tenemos excelentes opciones de sofás de 3 puestos en tu presupuesto. ¿Prefieres algún estilo en particular? ¿Moderno, clásico o algo específico?",
+    "recommended_action": "create_lead"
+}}
 
-MENSAJE: "Mi pedido no llegó aún"
-JSON: {"has_sufficient_info": false, "missing_info": ["contact_info", "order_details"], "extracted_data": {"name": null, "phone": null, "email": null, "product_interest": [], "location": null, "budget_range": null, "urgency": "high", "intent": "reclamo_pedido"}, "confidence_score": 0.9, "quality_assessment": "cold", "is_support_request": true, "conversation_stage": "support"}
+HISTORIAL: {history_str}
 
-Analiza el siguiente mensaje:"""
+MENSAJE A ANALIZAR:"""
 
-    def _determine_action(self, analysis: Dict[str, Any]) -> str:
-        """Determina la acción recomendada basada en el análisis."""
+    def _ensure_compatibility(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Asegura compatibilidad con el webhook existente."""
         
+        # Asegurar que recommended_action existe
+        if "recommended_action" not in analysis:
+            analysis["recommended_action"] = self._determine_action(analysis.get("analysis", {}))
+        
+        # Crear campos adicionales para compatibilidad
+        analysis_data = analysis.get("analysis", {})
+        
+        # Campos que espera el webhook
+        analysis["has_sufficient_info"] = analysis_data.get("has_sufficient_info", False)
+        analysis["extracted_data"] = analysis_data.get("extracted_data", {})
+        analysis["confidence_score"] = analysis_data.get("confidence_score", 0.0)
+        analysis["quality_assessment"] = analysis_data.get("quality_assessment", "cold")
+        analysis["is_support_request"] = analysis_data.get("is_support_request", False)
+        analysis["conversation_stage"] = analysis_data.get("conversation_stage", "initial")
+        
+        # Crear next_question desde suggested_reply
+        analysis["next_question"] = analysis.get("suggested_reply", "¿En qué puedo ayudarte?")
+        analysis["natural_response"] = analysis.get("suggested_reply", "¿En qué puedo ayudarte?")
+        
+        return analysis
+    
+    def _add_professional_logic(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Agrega lógica profesional para manejo de leads."""
+        
+        quality = analysis.get("quality_assessment", "cold")
+        confidence = analysis.get("confidence_score", 0)
+        
+        # Determinar acción final
+        if analysis.get("is_support_request", False):
+            analysis["final_action"] = "transfer_to_helpdesk"
+        elif quality == "hot" and confidence >= 0.7 and analysis.get("has_sufficient_info", False):
+            analysis["final_action"] = "create_lead_immediate"
+        elif quality == "warm" and confidence >= 0.5:
+            analysis["final_action"] = "nurture_and_qualify"
+        else:
+            analysis["final_action"] = "educate_and_build_interest"
+        
+        # Campos adicionales
+        analysis["lead_quality"] = quality
+        analysis["missing_for_lead"] = self._calculate_missing_info(analysis)
+        
+        return analysis
+    
+    def _calculate_missing_info(self, analysis: Dict[str, Any]) -> List[str]:
+        """Calcula información faltante para crear lead."""
+        
+        extracted = analysis.get("extracted_data", {})
+        missing = []
+        
+        if not extracted.get("name"):
+            missing.append("contact_info")
+        
+        if not extracted.get("product_interest"):
+            missing.append("specific_product")
+        
+        if not extracted.get("intent") or extracted.get("intent") == "información_general":
+            missing.append("clear_intent")
+        
+        return missing
+    
+    def _determine_action(self, analysis: Dict[str, Any]) -> str:
+        """Determina acción como fallback."""
         if analysis.get("is_support_request", False):
             return "transfer_to_support"
-        
         if analysis.get("has_sufficient_info", False):
             return "create_lead"
-        
-        confidence = analysis.get("confidence_score", 0)
-        missing_info = analysis.get("missing_info", [])
-        
-        if confidence < 0.3:
-            return "ask_clarifying_question"
-        elif "contact_info" in missing_info:
-            return "request_contact_info"
-        elif "product_interest" in missing_info:
-            return "ask_about_interest"
-        else:
-            return "gather_more_details"
-    
-    def _generate_next_question(self, analysis: Dict[str, Any]) -> Optional[str]:
-        """Genera la siguiente pregunta inteligente basada en el análisis."""
-        
-        action = analysis.get("recommended_action")
-        missing_info = analysis.get("missing_info", [])
-        conversation_stage = analysis.get("conversation_stage", "initial")
-        
-        questions = {
-            "ask_clarifying_question": [
-                "¡Hola! ¿En qué puedo ayudarte hoy?",
-                "¿Hay algo específico que te interese de nuestros productos?",
-                "¿Qué tipo de información necesitas?"
-            ],
-            
-            "request_contact_info": [
-                "Me encantaría ayudarte. ¿Podrías compartirme tu nombre para personalizar mejor la atención?",
-                "Para enviarte información detallada, ¿me compartes tu nombre?",
-                "¿Cómo te gusta que te llamen?"
-            ],
-            
-            "ask_about_interest": [
-                "¿Qué tipo de muebles te interesan específicamente?",
-                "¿Para qué espacio de tu hogar estás buscando muebles?",
-                "¿Hay algún estilo en particular que tengas en mente?"
-            ],
-            
-            "gather_more_details": [
-                "¿Tienes algún presupuesto en mente?",
-                "¿En qué ciudad te encuentras?",
-                "¿Es urgente o tienes tiempo para evaluar opciones?"
-            ],
-            
-            "transfer_to_support": [
-                "Entiendo tu consulta. Te voy a conectar con nuestro equipo de soporte para resolver tu situación."
-            ]
-        }
-        
-        if action in questions:
-            # Rotar preguntas basado en el historial si es necesario
-            return questions[action][0]  # Por ahora, primera pregunta
-        
-        return None
+        return "continue_conversation"
     
     def _fallback_analysis(self) -> Dict[str, Any]:
-        """Análisis de respaldo en caso de error."""
+        """Análisis de respaldo mejorado."""
         return {
+            "analysis": {
+                "has_sufficient_info": False,
+                "missing_info": ["all_info"],
+                "extracted_data": {},
+                "confidence_score": 0.1,
+                "quality_assessment": "cold",
+                "is_support_request": False,
+                "conversation_stage": "initial"
+            },
+            "suggested_reply": "¡Hola! Soy el asistente de COLINEAL. ¿En qué puedo ayudarte hoy?",
+            "recommended_action": "continue_conversation",
             "has_sufficient_info": False,
-            "missing_info": ["all_info"],
             "extracted_data": {},
-            "confidence_score": 0.0,
+            "confidence_score": 0.1,
             "quality_assessment": "cold",
             "is_support_request": False,
             "conversation_stage": "initial",
-            "recommended_action": "ask_clarifying_question",
-            "next_question": "¡Hola! ¿En qué puedo ayudarte hoy?"
+            "next_question": "¡Hola! Soy el asistente de COLINEAL. ¿En qué puedo ayudarte hoy?",
+            "natural_response": "¡Hola! Soy el asistente de COLINEAL. ¿En qué puedo ayudarte hoy?",
+            "final_action": "educate_and_build_interest",
+            "lead_quality": "cold",
+            "missing_for_lead": ["all_info"]
         }
     
     def should_create_lead(self, analysis: Dict[str, Any]) -> bool:
-        """Determina si se debe crear un lead basado en el análisis."""
+        """Determina si crear lead (mantiene compatibilidad)."""
         return (
-            analysis.get("has_sufficient_info", False) and 
-            not analysis.get("is_support_request", False) and
-            analysis.get("confidence_score", 0) > 0.6
+            analysis.get("final_action") == "create_lead_immediate" or
+            (analysis.get("recommended_action") == "create_lead" and
+             analysis.get("has_sufficient_info", False) and
+             not analysis.get("is_support_request", False))
         )
     
     def format_lead_data(self, analysis: Dict[str, Any], phone_number: str, message: str) -> Dict[str, Any]:
-        """Formatea los datos para crear un lead en Odoo."""
+        """Formatea datos para crear lead (SOLO CAMPOS BÁSICOS)."""
         
-        extracted = analysis.get("extracted_data", {})
+        # Usar analysis directamente o analysis.analysis según estructura
+        analysis_data = analysis.get("analysis", analysis)
+        extracted = analysis_data.get("extracted_data", {})
         
-        # Construir descripción rica
+        # Construir descripción rica con toda la información
         description_parts = [
             f"Mensaje original: {message}",
-            f"Análisis IA: {analysis.get('intent', 'Sin análisis')}",
-            f"Nivel de interés: {analysis.get('quality_assessment', 'N/A')}",
-            f"Productos de interés: {', '.join(extracted.get('product_interest', []))}"
+            f"Fuente: WhatsApp",
+            f"Análisis IA: {extracted.get('intent', 'Sin análisis')}",
+            f"Nivel de interés: {analysis_data.get('quality_assessment', 'N/A')}"
         ]
         
-        if extracted.get("budget_range"):
-            description_parts.append(f"Presupuesto: {extracted.get('budget_range')}")
+        # Agregar productos de interés a la descripción
+        if extracted.get("product_interest"):
+            description_parts.append(f"Productos de interés: {', '.join(extracted['product_interest'])}")
         
+        # Agregar presupuesto a la descripción
+        if extracted.get("budget_range"):
+            description_parts.append(f"Presupuesto mencionado: {extracted.get('budget_range')}")
+        
+        # Agregar urgencia a la descripción
         if extracted.get("urgency"):
             description_parts.append(f"Urgencia: {extracted.get('urgency')}")
         
+        # Agregar confianza del análisis
+        if analysis_data.get('confidence_score'):
+            description_parts.append(f"Confianza del análisis: {analysis_data.get('confidence_score'):.2f}")
+        
+        # SOLO USAR CAMPOS BÁSICOS DE ODOO
         return {
             'name': self._generate_lead_name(extracted, phone_number),
             'phone': phone_number,
@@ -207,17 +297,58 @@ Analiza el siguiente mensaje:"""
             'email_from': extracted.get('email'),
             'city': extracted.get('location'),
             'description': '\n'.join(description_parts),
-            'priority': self._map_urgency_to_priority(extracted.get('urgency')),
-            # Campos personalizados si existen en Odoo
-            'x_source': 'WhatsApp',
-            'x_product_interest': ', '.join(extracted.get('product_interest', [])),
-            'x_budget_range': extracted.get('budget_range'),
-            'x_ai_confidence': analysis.get('confidence_score'),
-            'x_quality_score': analysis.get('quality_assessment')
+            'priority': self._map_urgency_to_priority(extracted.get('urgency'))
+            # ELIMINAMOS TODOS LOS CAMPOS x_ porque no existen en tu Odoo
         }
     
+    def format_lead_data_professional(self, analysis: Dict[str, Any], phone_number: str, conversation_history: List[Dict]) -> Dict[str, Any]:
+        """Versión profesional usando SOLO campos básicos."""
+        
+        extracted = analysis.get("extracted_data", {})
+        lead_quality = analysis.get("lead_quality", "warm")
+        
+        # Construir descripción profesional rica
+        description_parts = [
+            f"=== LEAD {lead_quality.upper()} DESDE WHATSAPP ===",
+            f"Confianza del análisis: {analysis.get('confidence_score', 0):.2f}",
+            f"Necesidad específica: {extracted.get('intent', 'No especificada')}",
+            f"Fuente: WhatsApp API Automatizada COLINEAL"
+        ]
+        
+        if conversation_history:
+            description_parts.append(f"Conversación de {len(conversation_history)} mensajes")
+        
+        if extracted.get("product_interest"):
+            description_parts.append(f"Productos de interés: {', '.join(extracted['product_interest'])}")
+        
+        if extracted.get("budget_range"):
+            description_parts.append(f"Presupuesto mencionado: {extracted['budget_range']}")
+        
+        if extracted.get("urgency"):
+            description_parts.append(f"Nivel de urgencia: {extracted['urgency']}")
+        
+        # Agregar resumen de conversación
+        if conversation_history:
+            description_parts.append("\n=== HISTORIAL DE CONVERSACIÓN ===")
+            for i, msg in enumerate(conversation_history[-3:], 1):  # Últimos 3 mensajes
+                msg_type = "Cliente" if msg.get("type") == "user" else "Asistente"
+                description_parts.append(f"{i}. {msg_type}: {msg.get('message', '')[:100]}...")
+        
+        # SOLO CAMPOS BÁSICOS DE ODOO
+        return {
+            'name': self._generate_smart_lead_name(extracted, phone_number, lead_quality),
+            'phone': phone_number,
+            'contact_name': extracted.get('name'),
+            'email_from': extracted.get('email'),
+            'city': extracted.get('location'),
+            'description': '\n'.join(description_parts),
+            'priority': self._map_quality_to_priority(lead_quality)
+        }
+    
+    # ===== MÉTODOS AUXILIARES =====
+    
     def _generate_lead_name(self, extracted_data: Dict, phone_number: str) -> str:
-        """Genera un nombre descriptivo para el lead."""
+        """Genera nombre para lead (método original)."""
         
         name = extracted_data.get('name')
         products = extracted_data.get('product_interest', [])
@@ -230,13 +361,38 @@ Analiza el siguiente mensaje:"""
             return f"Lead WhatsApp - {', '.join(products[:2])}"
         else:
             return f"Lead WhatsApp - {phone_number}"
-    
+
+    def _generate_smart_lead_name(self, extracted_data: Dict, phone_number: str, quality: str) -> str:
+        """Genera nombre inteligente (NUEVO MÉTODO)."""
+        
+        name = extracted_data.get('name')
+        products = extracted_data.get('product_interest', [])
+        
+        if name and products:
+            main_product = products[0]
+            return f"{name} - {main_product.title()} ({quality.upper()})"
+        elif name:
+            return f"{name} - Consulta ({quality.upper()})"
+        elif products:
+            main_product = products[0] 
+            return f"Lead {quality.upper()} - {main_product.title()}"
+        else:
+            return f"Lead {quality.upper()} - {phone_number[-4:]}"
+
     def _map_urgency_to_priority(self, urgency: str) -> str:
         """Mapea urgencia a prioridad de Odoo."""
         mapping = {
-            "high": "3",      # Alta
-            "medium": "2",    # Media  
-            "low": "1",       # Baja
-            None: "1"         # Por defecto
+            "high": "3",     # Alta prioridad
+            "medium": "2",   # Media prioridad  
+            "low": "1"       # Baja prioridad
         }
         return mapping.get(urgency, "1")
+
+    def _map_quality_to_priority(self, quality: str) -> str:
+        """Mapea calidad del lead a prioridad."""
+        mapping = {
+            "hot": "3",      # Alta prioridad
+            "warm": "2",     # Media prioridad
+            "cold": "1"      # Baja prioridad
+        }
+        return mapping.get(quality, "1")
